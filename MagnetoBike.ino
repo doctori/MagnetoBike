@@ -9,13 +9,67 @@
 #include <Adafruit_LSM303.h>
 #include <Wire.h>
 #include <Adafruit_MCP23017.h>
+#define SHAPE_SIZE 600
+#define ROTATION_SPEED 0 // ms delay between cube draws
 
 Adafruit_MCP23017 mcp;
 Adafruit_LSM303 lsm;
+int SCREEN_WIDTH = uView.getLCDWidth();
+int SCREEN_HEIGHT = uView.getLCDHeight();
 
-int leftPin = 4;
-int rightPin = 5;
-int topPin = 6;
+float d = 3;
+float px[] = { -d,  d,  d, -d, -d,  d,  d, -d };
+float py[] = { -d, -d,  d,  d, -d, -d,  d,  d };
+float pz[] = { -d, -d, -d, -d,  d,  d,  d,  d };
+
+float p2x[] = {0,0,0,0,0,0,0,0};
+float p2y[] = {0,0,0,0,0,0,0,0};
+
+float r[] = {0,0,0};
+
+int leftPin = 8;
+int rightPin = 9;
+int topPin = 10;
+void drawCube(int x,int y,int z)
+{
+	r[0]=x*PI/180.0; // Add a degree
+	r[1]=y*PI/180.0; // Add a degree
+	r[2]=z*PI/180.0; // Add a degree
+	if (r[0] >= 360.0*PI/180.0) r[0] = 0;
+	if (r[1] >= 360.0*PI/180.0) r[1] = 0;
+	if (r[2] >= 360.0*PI/180.0) r[2] = 0;
+
+	for (int i=0;i<8;i++)
+	{
+		float px2 = px[i];
+		float py2 = cos(r[0])*py[i] - sin(r[0])*pz[i];
+		float pz2 = sin(r[0])*py[i] + cos(r[0])*pz[i];
+
+		float px3 = cos(r[1])*px2 + sin(r[1])*pz2;
+		float py3 = py2;
+		float pz3 = -sin(r[1])*px2 + cos(r[1])*pz2;
+
+		float ax = cos(r[2])*px3 - sin(r[2])*py3;
+		float ay = sin(r[2])*px3 + cos(r[2])*py3;
+		float az = pz3-150;
+		
+		p2x[i] = SCREEN_WIDTH/2+ax*SHAPE_SIZE/az;
+		p2y[i] = SCREEN_HEIGHT/2+ay*SHAPE_SIZE/az;
+	}
+
+	uView.clear(PAGE);
+	for (int i=0;i<3;i++) 
+	{
+		uView.line(p2x[i],p2y[i],p2x[i+1],p2y[i+1]);
+		uView.line(p2x[i+4],p2y[i+4],p2x[i+5],p2y[i+5]);
+		uView.line(p2x[i],p2y[i],p2x[i+4],p2y[i+4]);
+	}    
+	uView.line(p2x[3],p2y[3],p2x[0],p2y[0]);
+	uView.line(p2x[7],p2y[7],p2x[4],p2y[4]);
+	uView.line(p2x[3],p2y[3],p2x[7],p2y[7]);
+	uView.display();
+}
+
 void setup()  {
   uView.begin();		// begin of MicroView
   uView.clear(ALL);	// erase hardware memory inside the OLED controller
@@ -39,41 +93,32 @@ if (!lsm.begin()){
     while(1);
   }
 } 
-void turnItOn(Adafruit_LSM303 lsm,Adafruit_MCP23017 mcp,int y){
-  lsm.read();   
-  if(lsm.magData.x > -200 && lsm.magData.x < 200){
+void turnItOn(Adafruit_LSM303 lsm,Adafruit_MCP23017 mcp){
+  lsm.read();
+  int x = map(lsm.magData.x,-800,800,-100,100);
+  int y = map(lsm.magData.y,-800,800,-100,100);
+  int z = map(lsm.magData.z,-800,800,-100,100);
+  if(x > -20 && x < 20){
     mcp.digitalWrite(leftPin,HIGH);
   }else{
     mcp.digitalWrite(leftPin,LOW); 
   }
-  if(lsm.magData.y > -200 && lsm.magData.y < 200){
+  if(y > -20 && y < 20){
     mcp.digitalWrite(rightPin,HIGH);
   }else{
     mcp.digitalWrite(rightPin,LOW);
   }
-   if(lsm.magData.z > -200 && lsm.magData.z < 200){
+   if(z > -20 && z < 20){
     mcp.digitalWrite(topPin,HIGH);
   }else{
     mcp.digitalWrite(topPin,LOW);
   }
-    uView.clear(PAGE);
-    uView.setCursor(0,y);
-    uView.print("Mag X:");
-    uView.print((int)lsm.magData.x);
-    y=y+9;
-    uView.setCursor(0,y);
-    uView.print("Mag Y:");
-    uView.print((int)lsm.magData.y);
-    y=y+9;
-    uView.setCursor(0,y);    
-    uView.print("Mag Z:");
-    uView.println((int)lsm.magData.z);
-    uView.display();
+   drawCube(x,y,z);
 }
 void loop()  {
-   int y = 0; 
-  turnItOn(lsm,mcp,y);
+  turnItOn(lsm,mcp);
   delay(200);
+
 }
 
 
