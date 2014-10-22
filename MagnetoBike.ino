@@ -27,6 +27,8 @@ float p2y[] = {0,0,0,0,0,0,0,0};
 
 float r[] = {0,0,0};
 
+MicroViewWidget *widget[3];	
+
 int leftPin = 8;
 int rightPin = 9;
 int topPin = 10;
@@ -92,12 +94,21 @@ if (!lsm.begin()){
     uView.display();
     while(1);
   }
+	uView.clear(PAGE);	// erase the memory buffer, when next uView.display() is called, the OLED will be cleared.
+	widget[0] = new MicroViewSlider(0,0,0,20);		// declare widget0 as a Slider at x=0, y=0, min=0, max=100
+	widget[1] = new MicroViewSlider(0,15,0,20);	// declare widget0 as a Slider at x=0, y=10, min=0, max=150
+	widget[2] = new MicroViewSlider(0,30,0,20);		// declare widget0 as a Slider at x=0, y=20, min=0, max=50
+
 } 
 void turnItOn(Adafruit_LSM303 lsm,Adafruit_MCP23017 mcp){
   lsm.read();
   int x = map(lsm.magData.x,-800,800,-100,100);
+  int accx = map(lsm.accelData.x,-1000,1000,0,20);
+ 
   int y = map(lsm.magData.y,-800,800,-100,100);
+  int accy = map(lsm.accelData.y,-1000,1000,0,20);
   int z = map(lsm.magData.z,-800,800,-100,100);
+  float accz = map(lsm.accelData.z,-1000,1000,0,20);
   if(x > -20 && x < 20){
     mcp.digitalWrite(leftPin,HIGH);
   }else{
@@ -113,12 +124,17 @@ void turnItOn(Adafruit_LSM303 lsm,Adafruit_MCP23017 mcp){
   }else{
     mcp.digitalWrite(topPin,LOW);
   }
-   drawCube(x,y,z);
+ widget[0]->setValue(accx);
+  widget[1]->setValue(accy);
+  widget[2]->setValue(accz);
+  uView.display();
+  
 }
 void loop()  {
   turnItOn(lsm,mcp);
   delay(200);
 
 }
+
 
 
